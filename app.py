@@ -60,7 +60,7 @@ response = requests.get(house_text_url)
 # get all the full text as json 
 data = response.json()
 
-
+# load the model and pre-computed embeddings into memory when app starts for full-text search
 model = Doc2Vec.load("models/house_text_doc2vec.model")
 with open("models/doc2vec_embeddings.pkl", "rb") as f:
     data = pickle.load(f)
@@ -82,7 +82,7 @@ print(f"Embeddings shape: {embeddings.shape}")
 print(f"Number of documents: {len(documents)}")
 
 # search queries 
-# this isn't an endpoint, this is function to get the user query
+# this is function to get the user query
 @app.route("/search-json", methods=["GET"])
 def search_endpoint():
     query = request.args.get("q")
@@ -114,10 +114,6 @@ def search_page():
 # Individual trip page #
 ########################
 
-
-# URL pattern
-
-
 # endpoint for individual trip page -- one page for each document
 @app.route('/trip/<doc_id>.html')
 # Function to ingest data for trip page
@@ -142,7 +138,7 @@ def trip(doc_id):
 
                 departure_date = row[9]
                 return_date = row[10]
-
+                # format date
                 departure_date_obj = datetime.strptime(departure_date, '%Y-%m-%d')
                 return_date_obj = datetime.strptime(return_date, '%Y-%m-%d')
 
@@ -251,8 +247,8 @@ def sponsor(sponsors_id):
                         "label": dest.get("label")  
                     })
                     
-        # Parse members (Ensure this is outside of the destinations loop)
-                members_data = json.loads(fixed_member_data)  # Assuming column 4 stores top_members JSON
+        # parse members (Ensure this is outside of the destinations loop)
+                members_data = json.loads(fixed_member_data)  # assuming column 4 stores top_members JSON
                 for member in members_data:
                     if 'member_id' in member and 'member_name' in member and 'count' in member:
                         count = member['count']
@@ -318,7 +314,7 @@ def sponsor(sponsors_id):
 ###############################
 
 @app.route('/destination/<destinations_id>.html')
-# Function to ingest data for trip page
+# Function to ingest data for destination page
 def destination(destinations_id):
     try:
         destination_trips = pull_json(f"congtravel_master/destination_trips.json?destinations_id={destinations_id}")
@@ -434,24 +430,25 @@ def destination(destinations_id):
 
 
 # URL pattern
-
+# sample
 # member_id = "S001189"
 
 @app.route('/member/<member_id>.html')
-# Function to ingest data for trip page
+# Function to ingest data for member page
 def member(member_id):
     try:
-        
+        # get all the trips for that member as json from datasette endpoint for that specific member id
         member_trips = pull_json(f"congtravel_master/member_trips.json?member_id={member_id}")
 
         
         print("member_trips raw rows:", member_trips.get("rows", []), flush=True)
-
+        # get specifically top sponsors and destinations for bullet points
         member_top_sponsors_destinations = pull_json(f"congtravel_master/member_top_sponsors_destinations.json?member_id={member_id}")
 
         member_state = None
         member_party = None
         member_district = None
+        # get information about the member themselves (state, party, district) for display on page
         member_info = pull_json(f"congtravel_master/member.json?member_id__exact={member_id}")
         if member_info['rows']:
             r = member_info['rows'][0]
@@ -461,7 +458,7 @@ def member(member_id):
             member_district = r[4] if len(r) > 4 and r[4] else None
         
         formatted_trips = []
-
+        # pull sponsor and destination info from nested json in columns for each trip and format for display on page
         for row in member_trips["rows"]:
             try:
         
@@ -491,7 +488,7 @@ def member(member_id):
             
         top_sponsors = []
         top_destinations = []
-
+        # get count, name, and label for top sponsors and destinations for that member for display on page
         for row in member_top_sponsors_destinations['rows']:
             try:
                 sponsors_data = json.loads(row[3])
@@ -533,11 +530,6 @@ def member(member_id):
                     print(f"JSON Decode Error: {e}", flush=True)
         
 
-        ##
-        # Ingest needed table(s), filter based on value in url to only show one member on template
-        ##
-
-        # This will filter to return a dataframe of all trips associated with a given member, including staff trips from that office
         
         return render_template('x_member.html', 
                                member_trips=formatted_trips,
@@ -562,6 +554,7 @@ def member(member_id):
 
 #example URLs:  http://127.0.0.1:5000/member/S001189/filer/Matthew%20Hodge, http://127.0.0.1:5000/member/S001189/filer/Jessica%20Robertson
 
+# instead of a unique ID, traveler uses the actual filer name to generate the page
 @app.route('/member/<member_id>/filer/<filer_name>.html')
 def filer_in_office(member_id, filer_name):
     try:
