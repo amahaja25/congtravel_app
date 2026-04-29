@@ -1,0 +1,138 @@
+  <!-- FIler -->
+  <style>
+      /* Base table styles */
+      table.dataTable {
+          font-size: 14px;
+      }
+      
+      /* Control column styles */
+      .details-control {
+          cursor: pointer;
+          text-align: center;
+          position: relative;
+      }
+      
+      .details-control:before {
+          content: '►';
+          display: inline-block;
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 12px;
+          line-height: 1;
+      }
+      
+      tr.shown .details-control:before {
+          content: '▼';
+      }
+
+      /* Style for expanded content */
+      .hidden-info {
+          padding: 1em;
+          background-color: #f8f9fa;
+          margin: 0.5em 0;
+          border-radius: 4px;
+          font-size: inherit;
+          line-height: 1.5;
+      }
+
+      .hidden-info p {
+          margin: 0.5em 0;
+          font-size: inherit;
+      }
+
+      .hidden-info a {
+          color: inherit;
+          text-decoration: inherit;
+      }
+
+      /* Header styles */
+      table.dataTable thead th {
+          font-size: inherit;
+          font-weight: bold;
+          padding: 8px;
+      }
+
+      /* Control column header specific style */
+      th.control {
+          text-align: center;
+          white-space: nowrap;
+          font-size: 12px;
+      }
+      
+      /* Force table to never collapse to cards */
+      table.dataTable {
+          display: table !important;
+          width: 100% !important;
+      }
+      table.dataTable thead {
+          display: table-header-group !important;
+      }
+      table.dataTable tbody {
+          display: table-row-group !important;
+      }
+      table.dataTable tr {
+          display: table-row !important;
+      }
+      table.dataTable td,
+      table.dataTable th {
+          display: table-cell !important;
+      }
+
+      /* Remove extra spacing from table */
+      table.dataTable thead th,
+      table.dataTable thead td {
+          padding: 8px;
+      }
+
+      /* Ensure consistent link styling */
+      #filers a, .hidden-info a {
+          color: #0275d8;
+          text-decoration: none;
+      }
+
+      #filers a:hover, .hidden-info a:hover {
+          text-decoration: underline;
+      }
+
+      /* Hide expand column when all columns are visible */
+      @media screen and (min-width: 769px) {
+          .control {
+              display: none !important;
+          }
+      }
+
+      /* Responsive column handling */
+      @media screen and (max-width: 768px) {
+          /* Hide specific columns */
+          #filers td.hideable,
+          #filers th.hideable {
+              display: none !important;
+          }
+          
+          /* Show only specific columns */
+          #filers td.never-hide,
+          #filers th.never-hide,
+          #filers td.details-control,
+          #filers th.control {
+              display: table-cell !important;
+          }
+          
+          /* Adjust spacing for mobile */
+          #filers td.never-hide,
+          #filers th.never-hide {
+              padding: 8px 4px;
+          }
+          
+          /* Mobile-specific control column styles */
+          #filers td.details-control,
+          #filers th.control {
+              min-width: 60px !important;
+              width: 60px !important;
+              padding: 8px 4px !important;
+              display: table-cell !important;
+          }
+      }
+  </style>
+

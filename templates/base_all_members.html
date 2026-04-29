@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Members{% endblock %}</title>
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="All Members | Congressional Travel Explorer">
+    <meta property="og:description" content="View all the members of the U.S. House of Representatives that have gone on sponsored trips since 2012.">
+    <meta property="og:image" content="{{ BASE_PATH }}/static/congtravelcard.png">
+    <meta property="og:url" content="https://example.comhttps://cnsmaryland.org/interactives/fall_2024/congressional_travel_explorer/all-members.html">
+    <meta property="og:type" content="website">
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="All Members | Congressional Travel Explorer">
+    <meta name="twitter:description" content="View all the members of the U.S. House of Representatives that have gone on sponsored trips since 2012..">
+    <meta name="twitter:image" content="https://cnsmaryland.org/{{ BASE_PATH }}/static/congtravelcard.png">
+    <!--Datatables + jQuery-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <!--<link rel="stylesheet" href="https://cdn.datatables.net/2.1.7/css/dataTables.dataTables.css" />
+    <script src="https://cdn.datatables.net/2.1.7/js/dataTables.js"></script>-->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.css">
+    <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.js"></script>
+
+    <!--Fonts-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Source+Serif+Pro:400,700&amp;display=swap" rel="stylesheet">
+    <!--Styles-->
+    <link href="{{ BASE_PATH }}/static/css/style.css" rel="stylesheet"/>
+    <!--Icons-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+   <!--Favicon from Twemoji-->
+   <link rel="icon" type="image/png" sizes="32x32" href="{{ BASE_PATH }}/static/favicon/android-chrome-192x192.png">
+    <!--Chart.js-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+     <!-- METRICS -->
+     <meta name="parsely-title" content="All Members | Congressional Travel Explorer" />
+     <meta name="parsely-link" content="https://example.comhttps://cnsmaryland.org/interactives/fall_2024/congressional_travel_explorer/all-members.html" />
+     <meta name="parsely-type" content="post" />
+     <meta name="parsely-image-url" content="TK" />
+     <meta name="parsely-pub-date" content="2024-11-20" />
+     <meta name="parsely-section" content="Congressional Travel Explorer" />
+     <meta name="parsely-author" content="Howard Center for Investigative Journalism" />
+     <meta name="parsely-tags" content="politics, congress, travel, lobbying, non-profits" />
+     <!-- METRICS -->
+        
+</head>
+<body>
+  
+ <header class="header style3 dark">
+        <div class="row">
+            <div class="small-2 columns text-left mobile-icon-holder">
+                <div class="mobile-toggle-holder">
+
+                </div>
+            </div>
+            <div class="small-8 large-12 columns logo">
+                <div id="menu_width">
+                    <a href="https://cnsmaryland.org/the-howard-center-for-investigative-journalism/" class="logolink">
+                        <img src="https://cnsmaryland.org/wp-content/uploads/2023/10/howard-site-header.png" class="logoimg" alt="The Howard Center for Investigative Journalism">
+                    </a>
+                    
+                            </div>
+                        </div>
+                 
+                </div>
+    </header>
+
+    <!-- Main content of the page -->
+    <main>
+        <div class="w3-container">
+        <h1><a href="{{ BASE_PATH }}/" class="home-link">Congressional Travel Explorer</a></h1>
+       <div class="search-wrapper">
+            <div class="search-container">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search sponsors, destinations and U.S. House members...">
+            </div>
+            <div id="resultsDropdown" class="results-dropdown"></div>
+        </div>
+
+        <p class="example-query">
+          Example searches: <a href="{{ BASE_PATH }}/member/M001165.html">Kevin McCarthy</a>, <a href="{{ BASE_PATH }}/destination/30.html">Ankara, Turkey</a> or <a href="{{ BASE_PATH }}/sponsor/18.html">American Israel Education Foundation</a> | <a href="{{ BASE_PATH }}/about.html">About this project</a>
+      </p>
+
+
+<!-- Add this after your chart scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.6.2/fuse.min.js"></script>
+<script>
+    // ---------------------------
+    // US state mapping
+    // ---------------------------
+    const usStates = {
+        "AL": "Alabama","AK": "Alaska","AZ": "Arizona","AR": "Arkansas",
+        "CA": "California","CO": "Colorado","CT": "Connecticut","DE": "Delaware",
+        "FL": "Florida","GA": "Georgia","HI": "Hawaii","ID": "Idaho",
+        "IL": "Illinois","IN": "Indiana","IA": "Iowa","KS": "Kansas",
+        "KY": "Kentucky","LA": "Louisiana","ME": "Maine","MD": "Maryland",
+        "MA": "Massachusetts","MI": "Michigan","MN": "Minnesota","MS": "Mississippi",
+        "MO": "Missouri","MT": "Montana","NE": "Nebraska","NV": "Nevada",
+        "NH": "New Hampshire","NJ": "New Jersey","NM": "New Mexico","NY": "New York",
+        "NC": "North Carolina","ND": "North Dakota","OH": "Ohio","OK": "Oklahoma",
+        "OR": "Oregon","PA": "Pennsylvania","RI": "Rhode Island","SC": "South Carolina",
+        "SD": "South Dakota","TN": "Tennessee","TX": "Texas","UT": "Utah",
+        "VT": "Vermont","VA": "Virginia","WA": "Washington","WV": "West Virginia",
+        "WI": "Wisconsin","WY": "Wyoming"
+    };
+
+    function abbrToFull(abbr) {
+        return usStates[abbr.toUpperCase()] || "";
+    }
+
+    // ---------------------------
+    // Global variables
+    // ---------------------------
+    let searchableItems = [];
+    let fuse;
+
+    // ---------------------------
+    // Fetch and preprocess data
+    // ---------------------------
+    async function fetchAllData() {
+        try {
+            // Fetch all data from the remote datasette API
+            let allData = [];
+            let nextUrl = 'https://congtrav-05-14-2025-648704443537.us-east1.run.app/congtravel_master/search_data.json?_size=1000';
+            
+            // Keep fetching until we get all data (handle pagination)
+            while (nextUrl) {
+                const response = await fetch(nextUrl);
+                const data = await response.json();
+                
+                if (data.rows) {
+                    allData.push(...data.rows);
+                }
+                
+                // Check if there's more data to fetch
+                nextUrl = data.next_url || null;
+                
+                // Safety break to avoid infinite loops
+                if (allData.length > 10000) break;
+            }
+
+            console.log("Total rows fetched:", allData.length);
+
+            searchableItems = [];
+
+            // Process the rows - format: [rowid, name, type, id]
+            for (const row of allData) {
+                const [rowid, name, type, id] = row;
+                
+                // Create proper URL based on type and id
+                let url;
+                if (type === 'sponsor') {
+                    url = `/sponsor/${id}.html`;
+                } else if (type === 'destination') {
+                    url = `/destination/${id}.html`;
+                } else if (type === 'member') {
+                    url = `/member/${id}.html`;
+                }
+                
+                if (url && name) {
+                    const item = {
+                        id: id,
+                        name: name.toLowerCase(), // For searching
+                        displayName: name, // Original name for display
+                        type: type,
+                        url: url,
+                        state_full: "",
+                        state_abbr: ""
+                    };
+                    
+                    searchableItems.push(item);
+                }
+            }
+
+            console.log("Items before deduplication:", searchableItems.length);
+
+            // Deduplicate
+            const seen = new Set();
+            searchableItems = searchableItems.filter(item => {
+                const key = `${item.id}-${item.type}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            console.log("Items after deduplication:", searchableItems.length);
+
+            // Initialize Fuse
+            fuse = new Fuse(searchableItems, {
+                keys: [
+                    { name: 'name', weight: 0.7 },
+                    { name: 'state_full', weight: 0.2 },
+                    { name: 'state_abbr', weight: 0.1 }
+                ],
+                threshold: 0.6,
+                includeScore: true,
+                shouldSort: true,
+                ignoreLocation: true,
+                minMatchCharLength: 2
+            });
+
+            console.log("Fuse initialized.");
+            console.log("Test search 'kevin mccarthy':", fuse.search("kevin mccarthy").map(r => r.item));
+            console.log("Test search 'baltimore':", fuse.search("baltimore").map(r => r.item));
+            console.log("Test search 'MD':", fuse.search("MD").map(r => r.item));
+
+        } catch (error) {
+            console.error("Error fetching search data:", error);
+        }
+    }
+
+    // Fetch the data
+    fetchAllData();
+
+    // ---------------------------
+    // DOM elements
+    // ---------------------------
+    const searchInput = document.getElementById('searchInput');
+    const resultsDropdown = document.getElementById('resultsDropdown');
+
+    // ---------------------------
+    // Display results
+    // ---------------------------
+    function displayResults(results) {
+        if (!results.length) {
+            resultsDropdown.innerHTML = '<div class="result-item">No results found</div>';
+            resultsDropdown.classList.add('active');
+            return;
+        }
+
+        resultsDropdown.innerHTML = results
+            .map(({ item }) => `
+                <a href="{{ BASE_PATH }}${item.url}" class="result-item">
+                    <div>${item.displayName}</div>
+                    <div class="result-type">${item.type}</div>
+                </a>
+            `)
+            .join('');
+
+        resultsDropdown.classList.add('active');
+    }
+
+    // ---------------------------
+    // Search input listener
+    // ---------------------------
+    searchInput.addEventListener('input', e => {
+        const term = e.target.value.trim().toLowerCase();
+        if (!term || !fuse) {
+            resultsDropdown.innerHTML = '';
+            resultsDropdown.classList.remove('active');
+            return;
+        }
+
+        // Fuse search
+        const results = fuse.search(term).slice(0, 20);
+        displayResults(results);
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+        if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+            resultsDropdown.classList.remove('active');
+        }
+    });
+
+    // Reopen dropdown on focus
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim() && fuse) {
+            resultsDropdown.classList.add('active');
+        }
+    });
+    </script>
+
+
+
+
+
+        
+<!--
+        Example searches: <a href="/member/S001189">Rep. Steny Hoyer, D-Md.</a>
+
+        <p><a href="http://127.0.0.1:5000/trip/500006933">Trip example</a></p>
+        
+        <p><a href="/sponsor/100">Sponsor example</a></p>
+        <p><a href="/destination/99">Destination example</a></p>
+        <p><a href="/member/S001189/filer/Matthew%20Hodge">Filer-member example</a></p>
+        -->
+    
+
+        {% block content %}
+        {% endblock %}
+    </div>
+    </main>
+    <br>
+
+
+   <!-- Footer -->
+   <footer id="subfooter" class="dark style1">
+    <div class="row">
+      <div class="small-12 columns">
+        <div class="subfooter-menu-holder text-center">
+          <div class="subfooter-menu">
+            <ul id="menu-footer-menu-2020" class="footer-menu">
+              <li class="menu-item">
+                <a class="footer-item" href="https://cnsmaryland.org/about-capital-news-service/">ABOUT CNS</a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" href="https://merrill.umd.edu/">MERRILL COLLEGE</a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" href="https://cnsmaryland.org/capital-news-service-wire/" class="footer-link">CNS WIRE</a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" target="_blank" rel="noopener" href="https://www.facebook.com/MarylandCNS/"><i class="bi bi-facebook"></i></a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" target="_blank" rel="noopener" href="http://twitter.com/CNSmd"><i class="bi bi-twitter"></i></a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" target="_blank" rel="noopener" href="https://www.youtube.com/user/CNSMaryland"><i class="bi bi-youtube"></i></a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" target="_blank" rel="noopener" href="https://www.instagram.com/cnsmd/"><i class="bi bi-instagram"></i></a>
+              </li>
+              <li class="menu-item">
+                <a class="footer-item" target="_blank" rel="noopener" href="http://snapchat.com/add/cnsmaryland"><i class="bi bi-snapchat"></i></a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+<!-- START Parse.ly Include: Standard -->
+<script id="parsely-cfg" src="//cdn.parsely.com/keys/cnsmaryland.org/p.js"></script>
+<!-- END Parse.ly Include: Standard -->    
+</div>
+
+    
+</body>
+</html>

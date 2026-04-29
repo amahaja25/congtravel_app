@@ -1,0 +1,43 @@
+{% extends "base_all_destinations.html" %}
+
+{% block title %}Destinations{% endblock %}
+
+{% block content %}
+
+<h2>All destinations</h2>
+    <div class="row">
+        <table id="destination-results" class="display">
+            <thead>
+                <tr>
+                    <th>Destination</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in destination_results %}
+                <tr>
+                    <td>
+                        <a href="{{ BASE_PATH }}/destination/{{ row[0] }}.html">{{ row[1] }}</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="example-query">See all <a href="{{ BASE_PATH }}/all-sponsors.html">sponsors</a> and <a href="{{ BASE_PATH }}/all-members.html"><!--specific to reps--> members.</a></p>
+
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $('#destination-results').DataTable({
+                    responsive: false,
+                    paging: true,
+                    ordering: true,
+                    searching: true,
+                    pageLength: 10,
+                    order: [],
+                    columnDefs: [
+                    ]
+                });
+            });
+        </script>
+    </div>
+
+{% endblock %}

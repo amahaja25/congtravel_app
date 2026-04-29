@@ -1,0 +1,74 @@
+{% extends "base_trip.html" %}
+
+{% block title %}Trip{% endblock %}
+
+{% block content %}
+
+{% for trip in trip_info %}
+    <h6>
+        <span class="darker_blue">
+            <a href="{{ BASE_PATH }}{{ url_for('filer_in_office', member_id=trip.member_id, filer_name=trip.cleaned_filer_names) }}">{{ trip.cleaned_filer_names }}</a>
+        </span> in the office of <span class="darker_blue">
+            <a href="{{ BASE_PATH }}{{ url_for('member', member_id=trip.member_id) }}">Rep. {{ trip.member_name }}</a>
+        </span> ({{ trip.party }}-{{ trip.state }}) traveled to
+        <span class="darker_blue">
+            {%- for dest in trip.destination_info -%}
+                {%- if not loop.first -%}
+                    {%- if loop.last and trip.destination_info|length > 1 -%}
+                    &nbsp;and&nbsp; 
+                    {%-else -%}
+                    ;&nbsp;  
+                    {%- endif -%}
+                {%- endif -%}
+                <a href="{{ BASE_PATH }}{{ url_for('destination', destinations_id=dest.destinations_id) }}">{{ dest.destination }}</a></span>
+            {%- endfor -%}
+            , paid for by <span class="darker_blue">
+                {%- for sponsor in trip.sponsor_info -%}
+                    {%- if not loop.first -%}
+                        {%- if loop.last and trip.sponsor_info|length > 1 -%}
+                        &nbsp;and&nbsp; 
+                        {%- else -%}
+                            ;&nbsp; 
+                        {%- endif %}
+                    {%- endif -%}
+                    <a href="{{ BASE_PATH }}{{ url_for('sponsor', sponsors_id=sponsor.sponsors_id) }}">{{ sponsor.sponsor }}</a>
+                {%- endfor -%}
+            </span>. This trip lasted <span class="darker_blue"> {{ trip.trip_length }} </span> from <span class="darker_blue"> {{ trip.departure_date }} </span> to <span class="darker_blue"> {{ trip.return_date }}</span>.
+    </h6>
+{% endfor %}
+
+<p>Note: The congressional “office” could also include a congressional committee the member leads or a House leadership office the member holds.</p>
+
+<br>
+<br>
+<!--
+        <h3>Trip Summary:</h3>
+        <ul>
+            <p><li>This trip lasted<span class="darker_blue"> {{ trip_length }} </span>from<span class="darker_blue"> {{ departure_date }} </span>to<span class="darker_blue"> {{ return_date }}</span>.</li></p>
+        </ul>
+
+        
+        <h3><strong>Notes:</strong></h3>
+        <ul>
+            <li><p>{{ notes }}</p></li>
+        </ul>
+-->
+{% for trip in trip_info %}
+        <iframe
+          src="{{ trip.document_link }}?embed=1&amp;responsive=1&amp;title=0&amp;pdf=0"
+          title="Document (Hosted by DocumentCloud)"
+          width="700"
+          height="905"
+          style="border: 1px solid #aaa; width: 100%; height: 800px; height: calc(100vh - 100px);"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
+        ></iframe>
+{% endfor %}
+
+
+            
+            </div>
+
+
+    </div>
+</body>
+{% endblock %}

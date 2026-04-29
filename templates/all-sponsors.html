@@ -1,0 +1,43 @@
+{% extends "base_all_sponsors.html" %}
+
+{% block title %}Sponsors{% endblock %}
+
+{% block content %}
+
+
+<h2>All sponsors</h2>
+
+        <div class="row">
+            <table id="sponsor-results" class="display">
+                <thead>
+                    <tr>
+                        <th>Sponsor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sponsor_results %}
+                    <tr>
+                        <td>
+                            <a href="{{ BASE_PATH }}/sponsor/{{ row[0] }}.html">{{ row[1] }}</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="example-query">See all <a href="{{ BASE_PATH }}/all-destinations.html">destinations</a> and <a href="{{ BASE_PATH }}/all-members.html">members.</a></p>
+
+            <script type="text/javascript">
+                $(document).ready(function() {
+                    $('#sponsor-results').DataTable({
+                        responsive: false,
+                        paging: true,
+                        ordering: true,
+                        searching: true,
+                        pageLength: 10,
+                        order: [],
+                        columnDefs: []
+                    });
+                });
+            </script>
+        </div>
+{% endblock %}

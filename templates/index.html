@@ -1,0 +1,258 @@
+{% extends "base_index.html" %}
+
+{% block title %} Home | Congressional Travel Explorer{% endblock %}
+
+{% block content %}
+
+
+
+     
+
+    <div class="row">
+       </div>
+        
+    <div class="row">
+        <div class="column">
+            <div id="map_container">
+                <!-- Empty box for the map -->
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="column-3">
+            <h3>Top sponsors</h3>
+            <ol>
+                {% for sponsor in top_five_sponsors %}
+                <li class="list_items">
+                    <a href="{{ BASE_PATH }}{{ url_for('sponsor', sponsors_id=sponsor.sponsor_id) }}">
+                        {{ sponsor.sponsor }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ol>
+            <div class="example-query">See all <a href="{{ BASE_PATH }}/all-sponsors.html">sponsors.</a></div>
+        </div>
+        <div class="column-3">
+            <h3>Top destinations</h3>
+            <ol>
+                {% for dest in top_five_destinations %}
+                <li class="list_items">
+                    <a href="{{ BASE_PATH }}{{ url_for('destination', destinations_id=dest.destination_id) }}">
+                        {{ dest.destination }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ol>
+            <div class="example-query">See all <a href="{{ BASE_PATH }}/all-destinations.html">destinations.</a></div>
+        </div>
+        <div class="column-3">
+            <h3>Top offices</h3>
+            <ol>
+                {% for member in top_five_members %}
+                <li class="list_items">
+                    <a href="{{ BASE_PATH }}{{ url_for('member', member_id=member.member_id) }}">
+                        {{ member.member_name }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ol>
+            <div class="example-query">See all <a href="{{ BASE_PATH }}/all-members.html">members.</a></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="column">
+            <h3>Trips per year</h3>
+            <canvas id="tripsPerYearChart"></canvas>
+        </div>
+        <div class="column">
+            <h3>Sponsors per year</h3>
+            <canvas id="sponsorCountChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        var tripsPerYearCtx = document.getElementById('tripsPerYearChart').getContext('2d');
+        var tripsPerYearChart = new Chart(tripsPerYearCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ trips_per_year |map(attribute='year')|list|tojson }},
+                datasets: [{
+                    label: '# of Trips',
+                    data: {{ trips_per_year |map(attribute='count')|list|tojson }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        var sponsorCountCtx = document.getElementById('sponsorCountChart').getContext('2d');
+        var sponsorCountChart = new Chart(sponsorCountCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ sponsors_per_year |map(attribute='year')|list|tojson }},
+                datasets: [{
+                    label: '# of Sponsors',
+                    data: {{ sponsors_per_year |map(attribute='count')|list|tojson }},
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+
+
+{% endblock %}
+
+<!--
+<!DOCTYPE html>
+<html>
+<head>
+    
+    
+</head>
+
+
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    seo 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700&display=swap"
+        rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
+    <title>Trip</title>
+    <meta name="destinations" content="Destination Page">
+    <title>Index</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+
+<body>
+    <div class="w3-container">
+
+        <h6>
+            <span class="darker_blue">{{ cleaned_filer_names }} </span>in the office of<span class="darker_blue"> Rep. {{ member_name }} </span>({{ party }}-{{ state }}) went on a trip to<span class="darker_blue"> {{combined_dests_for_sentence}} </span>in<span class="darker_blue"> {{ year }}</span>, paid for by<span class="darker_blue"> {{ sponsors_cleaned }}</span>.            
+        </h6>
+        <div class="row">
+            <div class="column">
+                <h5>Trip Summary</h5>
+                <ul>
+                    <li>This trip lasted<span class="darker_blue"> {{ trip_length }} </span>from<span class="darker_blue"> {{ departure_date }} </span>to<span class="darker_blue"> {{ return_date }}</span>.</li>
+                    <li>X other people from X office </li>
+                </ul>
+            </div>
+           
+        </div>
+        <br>
+        
+
+    </div>
+    <p><strong>Sample Destination:</strong> <a href="http://127.0.0.1:5000/destination/1">http://127.0.0.1:5000/destination/1</a></p>
+    <p><strong>Sample trip:</strong> <a href="http://127.0.0.1:5000/trip/500006931">http://127.0.0.1:5000/trip/500006931</a></p>
+    <p><strong>Sample sponsor:</strong> <a href="http://127.0.0.1:5000/sponsor/1">http://127.0.0.1:5000/sponsor/1</a></p>
+    <p><strong>Sample member:</strong> <a href="http://127.0.0.1:5000/member/S001189">http://127.0.0.1:5000/member/S001189</a></p>    
+    <p><strong>Count total trips:</strong> {{ count_trips }}</p>
+    <p><strong>Total members count:</strong> {{ total_members_count }}</p>
+    <p><strong>Sponsors per year:</strong> {{ sponsors_per_year_count_list }}</p>
+    <p><strong>Trips per year:</strong> {{ trips_per_year_count_list }}</p>
+    <p><strong>Top five members count list:</strong> {{ top_five_members_count_list }}</p>
+    <p><strong>Top five destinations count list:</strong> {{ top_five_destinations_count_list }}</p>
+    <p><strong>Top five sponsors count list:</strong> {{ top_five_sponsors_count_list }}</p>
+    <table>
+    <thead>
+        <tr>
+            <th>Sponsor</th>
+            <th>Count</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sponsor in top_five_sponsors_count_list %}
+            <tr>
+                <td>{{ sponsor[0] }}</td>
+                <td>{{ sponsor[1] }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<canvas id="myChart"></canvas>
+
+<script>
+    var ctx = document.getElementById('myChart').getContext('2d');
+    var myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ sponsors_per_year_count_list|map(attribute='0')|list|tojson }},
+            datasets: [{
+                label: '# of Sponsors',
+                data: {{ sponsors_per_year_count_list|map(attribute='1')|list|tojson }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    </script>
+</body>
+</html>
+
+<body>
+    <div class="w3-container">
+
+        <h6>
+            <span class="darker_blue">{{ cleaned_filer_names }} </span>in the office of<span class="darker_blue"> Rep. {{ member_name }} </span>({{ party }}-{{ state }}) went on a trip to<span class="darker_blue"> {{combined_dests_for_sentence}} </span>in<span class="darker_blue"> {{ year }}</span>, paid for by<span class="darker_blue"> {{ sponsors_cleaned }}</span>.            
+        </h6>
+        <div class="row">
+            <div class="column">
+                <h5>Trip Summary</h5>
+                <ul>
+                    <li>This trip lasted<span class="darker_blue"> {{ trip_length }} </span>from<span class="darker_blue"> {{ departure_date }} </span>to<span class="darker_blue"> {{ return_date }}</span>.</li>
+                    <li>X other people from X office </li>
+                </ul>
+            </div>
+           
+        </div>
+        <br>
+        
+
+    </div>
+</body>
+</html>
+-->

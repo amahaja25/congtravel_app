@@ -1,0 +1,16 @@
+{% extends "full-text-base.html" %}
+
+{% block title %}Search documents{% endblock %}
+
+{% block content %}
+
+<h2 class="search-doc-title">Search documents</h2>
+    <div class="document-search-container">
+    <input type="text" id="document-search-input" class="document-search-input" placeholder="Search documents by keyword..." />
+    <button type="button" id="document-search-button" class="document-search-button">Search</button>
+    </div>
+    <p>Note: Extracted document text may not exactly match the text in the original PDF filing.</p>
+    <div id="results"></div>
+
+{% endblock %}
+

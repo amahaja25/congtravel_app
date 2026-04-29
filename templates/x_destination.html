@@ -1,0 +1,415 @@
+{% extends "base_destination.html" %}
+
+{% block title %}{{ destination_name }} | Destination{% endblock %}
+
+{% block content %}
+
+        
+
+       
+       <div class="row">
+            <h2><span class="black">{{ destination_name }}</span></h2>
+            <p>
+                 
+                <span class="darker_blue">{{ unique_offices }} </span>
+                {% if unique_offices == "One" %}
+                    has taken
+                {% else %}
+                    have taken
+                {% endif %}
+               
+                <span class="darker_blue"> {{ total_trips }} </span> to
+                <span class="darker_blue"> {{ destination_name }}</span>. 
+                The average trip lasted <span class="darker_blue">{{ average_trip_length_label }}</span>.
+                <!-- 
+                <span class="darker_blue"> {{ average_trip_length }} days</span>.
+            -->
+            </p>
+        </div>
+        <div class="row">
+            
+           <style>
+                @media screen and (min-width: 769px) {
+                    .column {
+                        width: 50%;
+                    }
+                }
+            </style>
+           
+           <div class="column" style="margin:0;padding:0;">
+                <h3>Top sponsors</h3>
+                {% if top_sponsors %}
+                <ul>
+                    {% for sponsor in top_sponsors %}
+                        <li>
+                            <a href="{{ url_for('sponsor', sponsors_id=sponsor.sponsor_id) }}">
+                                {{ sponsor.sponsor }}
+                            </a> ({{ sponsor.label }})
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>No top sponsors found</p>
+                {% endif %}
+            </div>
+            
+            <div class="column" style="margin:0;padding:0;">
+                <h3>Top members</h3>
+                {% if top_members %}
+                <ul>
+                    {% for member in top_members %}
+                        <li>
+                            <a href="{{ url_for('member', member_id=member.member_id) }}">
+                                {{ member.member_name }}
+                            </a> ({{ member.label }})
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>No top members found</p>
+                {% endif %}
+            </div>
+        <div class="row">
+            <h3>Trips per year</h3>
+                <canvas id="tripsovertimeChart"></canvas>
+        </div>
+            
+             <script>
+                var tripsPerYearCtx = document.getElementById('tripsovertimeChart').getContext('2d');
+                var tripsPerYearChart = new Chart(tripsPerYearCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ trips_per_year | map(attribute='year') | list | tojson }},  // Extracting 'year' as numbers
+                        datasets: [{
+                            label: '',
+                            data: {{ trips_per_year | map(attribute='trip_count') | list | tojson }},  // Extracting 'trip_count' as numbers
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false  // Hide the legend
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            </script>
+        </div> 
+        <div class="row">
+       
+        <h3>Recent trips</h3>
+         <!--
+        <table id="destination-trips" class="display">
+            <thead>
+                <tr>
+                    <th>Departure Date</th>
+                    <th>Return Date</th>
+                    <th>Traveler</th>
+                    <th>Office</th>
+                    <th>Sponsor</th>
+                    <th>Days</th>
+                    <th>Trip</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_dict in all_destination_trips %}
+                    <tr>
+                        <td>{{ row_dict.departure_date }}</td>
+                        <td>{{ row_dict.return_date }}</td>
+                        <td><a href="{{ BASE_PATH }}{{ url_for('filer_in_office', member_id=row_dict.member_id, filer_name=row_dict.cleaned_filer_names)}}">{{ row_dict.cleaned_filer_names }}</a></td>
+                        <td><a href="{{ BASE_PATH }}{{ url_for('member', member_id=row_dict.member_id)}}">{{ row_dict.member_name }}</a></td>
+                        <td>
+                            <ul>
+                                {% for sponsor in row_dict.sponsor_info %}
+                                    <li><a href="{{ BASE_PATH }}{{ url_for('sponsor', sponsors_id=sponsor.sponsors_id) }}">{{ sponsor.sponsor }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>{{ row_dict.trip_length }}</td>
+                        <td><a href="{{ BASE_PATH }}{{ url_for('trip', doc_id=row_dict.doc_id) }}">View</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $('#destination-trips').DataTable({
+                    responsive: true,
+                    paging: true,
+                    order: [[1, 'desc']], 
+                    columnDefs: [
+                   { orderable: false, targets: [6] },
+        ]
+                });
+            });
+        </script>
+        -->
+        <table id="destination-trips" class="display">
+            <thead>
+                <tr>
+                    <th class="control all">Expand</th>
+                        <th class="never-hide">Departure Date</th>
+                        <th class="hideable">Return Date</th>
+                        <th class="never-hide">Traveler</th>
+                        <th class="hideable">Office</th>
+                        <th class="hideable">Sponsor</th>
+                        <th class="hideable">Days</th>
+                        <th class="never-hide">Trip</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trip in destination_trips %}
+                    <tr>
+                        <td class="details-control"></td>
+                        <td class="never-hide">{{ trip.departure_date }}</td>
+                        <td class="hideable">{{ trip.return_date }}</td>
+                        <td class="never-hide">
+                            <a href="{{ url_for('filer_in_office', member_id=trip.member_id, filer_name=trip.cleaned_filer_names) }}">
+                                {{ trip.cleaned_filer_names }}
+                            </a>
+                        </td>
+                        <td class="hideable">
+                            <a href="{{ url_for('member', member_id=trip.member_id) }}">
+                                {{ trip.member_name }}
+                            </a>
+                        </td>
+                        <td class="hideable">
+                            <ul>
+                                {% for sponsor in trip.sponsor_info %}
+                                    <li>
+                                        <a href="{{ url_for('sponsor', sponsors_id=sponsor.id) }}">
+                                            {{ sponsor.sponsor }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="hideable">{{ trip.trip_length }}</td>
+                        <td class="never-hide">
+                            <a href="{{ url_for('trip', doc_id=trip.doc_id) }}">View</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+<!--
+    <h3>Recent trips</h3>
+        <table id="destination-trips" class="display" width="100%">
+            <thead>
+                <tr>
+                    <th class="control all">Expand</th>
+                    <th class="never-hide">Departure Date</th>
+                    <th class="hideable">Return Date</th>
+                    <th class="hideable">Traveler</th>
+                    <th class="never-hide">Office</th>
+                    <th class="hideable">Sponsor</th>
+                    <th class="hideable">Days</th>
+                    <th class="never-hide">Trip</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_dict in all_destination_trips %}
+                    <tr>
+                        <td class="details-control"></td>
+                        <td class="never-hide">{{ row_dict.departure_date }}</td>
+                        <td class="hideable">{{ row_dict.return_date }}</td>
+                        <td class="hideable"><a href="{{ BASE_PATH }}{{ url_for('filer_in_office', member_id=row_dict.member_id, filer_name=row_dict.cleaned_filer_names)}}">{{ row_dict.cleaned_filer_names }}</a></td>
+                        <td class="never-hide"><a href="{{ BASE_PATH }}{{ url_for('member', member_id=row_dict.member_id)}}">{{ row_dict.member_name }}</a></td>
+                        <td class="hideable">
+                            <ul>
+                                {% for sponsor in row_dict.sponsor_info %}
+                                    <li><a href="{{ BASE_PATH }}{{ url_for('sponsor', sponsors_id=sponsor.sponsors_id) }}">{{ sponsor.sponsor }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="hideable">{{ row_dict.trip_length }}</td>
+                        <td class="never-hide"><a href="{{ BASE_PATH }}{{ url_for('trip', doc_id=row_dict.doc_id) }}">View</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+     -->
+    <!--
+        <style>
+            /* Base table styles */
+            table.dataTable {
+                font-size: 14px;
+                display: table !important;
+                width: 100% !important;
+            }
+            
+            /* Control column styles */
+            .details-control {
+                cursor: pointer;
+                text-align: center;
+                position: relative;
+            }
+            
+            .details-control:before {
+                content: '►';
+                display: inline-block;
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 12px;
+                line-height: 1;
+            }
+            
+            tr.shown .details-control:before {
+                content: '▼';
+            }
+        
+            /* Style for expanded content */
+            .hidden-info {
+                padding: 1em;
+                background-color: #f8f9fa;
+                margin: 0.5em 0;
+                font-size: inherit;
+                line-height: 1.5;
+            }
+        
+            .hidden-info p {
+                margin: 0.5em 0;
+            }
+        
+            /* Table structure styles */
+            table.dataTable thead { display: table-header-group !important; }
+            table.dataTable tbody { display: table-row-group !important; }
+            table.dataTable tr { display: table-row !important; }
+            table.dataTable td,
+            table.dataTable th { display: table-cell !important; }
+        
+            /* Link styling */
+            #destination-trips a, .hidden-info a {
+                color: rgba(35,91,146,1);
+                text-decoration: none;
+            }
+        
+            #destination-trips a:hover, .hidden-info a:hover {
+                text-decoration: none;
+            }
+        
+            /* Responsive styles */
+            @media screen and (min-width: 769px) {
+                .control { display: none !important; }
+            }
+        
+            @media screen and (max-width: 768px) {
+                #destination-trips td.hideable,
+                #destination-trips th.hideable {
+                    display: none !important;
+                }
+                
+                #destination-trips td.never-hide,
+                #destination-trips th.never-hide,
+                #destination-trips td.details-control,
+                #destination-trips th.control {
+                    display: table-cell !important;
+                    padding: 8px 4px;
+                }
+                
+                #destination-trips td.details-control,
+                #destination-trips th.control {
+                    min-width: 60px !important;
+                    width: 60px !important;
+                }
+            }
+        </style>
+    -->    
+     
+        <script type="text/javascript">
+            $(document).ready(function() {
+                function formatDetails(rowData, tr) {
+                    var details = '<div class="hidden-info">';
+                    
+                    if (window.innerWidth <= 768) {
+                        details += '<p><strong>Return Date:</strong> ' + rowData[2] + '</p>' +
+                                  '<p><strong>Traveler:</strong> ' + $(rowData[3]).prop('outerHTML') + '</p>' +
+                                  '<p><strong>Sponsor:</strong> ' + $(rowData[5]).prop('outerHTML') + '</p>' +
+                                  '<p><strong>Days:</strong> ' + rowData[6] + '</p>';
+                    } else {
+                        if (tr.find('td.hideable:hidden').length > 0) {
+                            var hiddenCells = tr.find('td.hideable:hidden');
+                            hiddenCells.each(function(index) {
+                                var headerText = $(this).closest('table').find('th').eq($(this).index()).text();
+                                details += '<p><strong>' + headerText + ':</strong> ' + $(this).html() + '</p>';
+                            });
+                        }
+                    }
+                    
+                    details += '</div>';
+                    return details;
+                }
+        
+                var table = $('#destination-trips').DataTable({
+                    paging: true,
+                    order: [[1, 'desc']],
+                    columnDefs: [
+                        { orderable: false, targets: 0 }
+                    ],
+                    responsive: false,
+                    dom: '<"top"f>rt<"bottom"lip><"clear">'
+                });
+        
+                $('#destination-trips tbody').on('click', 'td.details-control', function() {
+                    var tr = $(this).closest('tr');
+                    var row = table.row(tr);
+                    var rowData = table.row(tr).data();
+        
+                    if (row.child.isShown()) {
+                        row.child.hide();
+                        tr.removeClass('shown');
+                    } else {
+                        row.child(formatDetails(rowData, tr)).show();
+                        tr.addClass('shown');
+                    }
+                });
+        
+                function updateExpandColumn() {
+                    if (window.innerWidth > 768) {
+                        table.column(0).visible(false);
+                    } else {
+                        table.column(0).visible(true);
+                    }
+                }
+        
+                updateExpandColumn();
+                $(window).on('resize', function() {
+                    updateExpandColumn();
+                });
+        
+                var resizeTimer;
+                $(window).on('resize', function() {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(function() {
+                        table.rows().every(function() {
+                            var tr = $(this.node());
+                            if (tr.hasClass('shown')) {
+                                var rowData = this.data();
+                                this.child(formatDetails(rowData, tr));
+                            }
+                        });
+                    }, 250);
+                });
+            });
+        </script>
+       </div>
+
+        <br><br><br>
+
+          
+    </body>
+     
+{% endblock %}
+
+
