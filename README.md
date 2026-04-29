@@ -3,9 +3,8 @@
 ## To setup app:
 
 ```bash
-# need python 3.11 because only older version works with gensim
-pyenv install 3.11
-pyenv local 3.11
+pyenv install 3.12.10
+pyenv local 3.12.10
 # create venv
 python3 -m venv venv
 # activate venv
