@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function handleSearch() {
-    // Start timing the search operation
+    // start timing the search operation
     const searchStartTime = performance.now();
     console.log('Search initiated at:', new Date().toISOString());
     
@@ -100,21 +100,21 @@ async function handleSearch() {
         return;
     }
 
-    // Show loading indicator
+    // show loading indicator
     showLoadingIndicator();
 
     try {
-        // Fetch a larger set of results and follow pagination if available
+        // fetch a larger set of results and follow pagination 
         const results = await fetchSearchAll(query);
         const searchResponseTime = performance.now();
         console.log(`Search response received in: ${(searchResponseTime - searchStartTime).toFixed(2)}ms`);
 
-        // Parse advanced query (quoted phrases, +/-, AND/OR/NOT operators)
+        // Parse advanced query with quoted phrases, +/-, AND/OR/NOT operators
         const parsedQuery = parseAdvancedQuery(query);
-        // remember parsed query globally so client-side filters can reuse it
+        // remember parsed query filters can reuse it
         lastParsedQuery = parsedQuery;
 
-        // Apply client-side advanced boolean/phrase filtering to server results
+        // apply boolean/phrase filtering to server results
         const filteredResults = applyAdvancedFilters(results, parsedQuery);
 
         lastResults = filteredResults;
@@ -122,18 +122,14 @@ async function handleSearch() {
         renderTable(filteredResults, searchStartTime, parsedQuery);
     } catch (error) {
         console.error("Semantic search error:", error);
-        // Hide loading indicator on error
+        // hide loading indicator on error
         hideLoadingIndicator();
-        // Alternative: use hideLoadingBar() if you're using the progress bar style
     }
 }
 
-// --- Advanced query parsing and client-side filtering ---
-// Supports:
-// - Quoted phrases: "new york"
-// - Prefix +term meaning MUST include
-// - Prefix -term meaning MUST NOT include
-// - Operators AND / OR / NOT (basic left-to-right parsing)
+//  Advanced query parsing and filtering
+// Supports quoted phrases, +for must include, -for must not include, and basic AND/OR/NOT operators. 
+// parses  raw query into structured components that can be applied as filters to the search results.
 function parseAdvancedQuery(rawQuery) {
     const must = [];    // MUST include
     const should = [];  // OR / optional
@@ -174,10 +170,9 @@ function parseAdvancedQuery(rawQuery) {
             continue;
         }
 
-        // If this token came from a quoted phrase, treat it as a MUST (exact phrase)
+        // if this token came from a quoted phrase, treat it as a MUST (exact phrase)
         const isPhrase = phrase !== undefined;
 
-        // Otherwise dispatch according to current operator
         if (isPhrase) {
             must.push(token);
         } else if (currentOp === 'AND') {
@@ -185,17 +180,12 @@ function parseAdvancedQuery(rawQuery) {
         } else if (currentOp === 'NOT') {
             mustNot.push(token);
         } else {
-            // OR or default
             should.push(token);
         }
 
-        // Reset operator to default OR after consuming a term
         currentOp = 'OR';
     }
 
-    // If there are no explicit must terms and there are should terms,
-    // keep should as-is. If there are only plain tokens and no operators,
-    // treat them as should (OR). Consumer can treat should as at-least-one.
     return { must, should, mustNot };
 }
 
@@ -203,12 +193,12 @@ function applyAdvancedFilters(results, parsed) {
     if (!parsed) return results;
     const { must, should, mustNot } = parsed;
 
-    // If nothing to filter, return original results
+    // if nothing to filter, return original results
     if ((!must || must.length === 0) && (!should || should.length === 0) && (!mustNot || mustNot.length === 0)) {
         return results;
     }
 
-    // Prepare normalized checks
+    // prepare normalized checks
     function docContains(docText, term) {
         if (!docText) return false;
         const lower = docText.toLowerCase();
@@ -228,17 +218,17 @@ function applyAdvancedFilters(results, parsed) {
     return (results || []).filter(r => {
         const docText = (r.doc || '').toString();
 
-        // must: all must terms/phrases must be present
+        // must: all specifed terms must be present
         for (const t of must) {
             if (!docContains(docText, t)) return false;
         }
 
-        // mustNot: none of these should be present
+        // mustNot: none of these words should be present
         for (const t of mustNot) {
             if (docContains(docText, t)) return false;
         }
 
-        // should: if there are should terms, at least one must match
+        // should: if there are these terms, at least one must match
         if (should && should.length > 0) {
             let found = false;
             for (const t of should) {
@@ -251,7 +241,7 @@ function applyAdvancedFilters(results, parsed) {
     });
 }
 
-// Build list of highlight terms from parsed query (used by renderTable)
+// build list of highlight terms from parsed query (used by renderTable)
 function getHighlightTerms(parsed) {
     if (!parsed) return [];
     const terms = [];
@@ -260,27 +250,27 @@ function getHighlightTerms(parsed) {
     return terms;
 }
 
-// --- Create dynamic filter dropdowns ---
+// create dynamic filter dropdowns
 function renderFilterControls(results) {
     const container = document.getElementById('results');
 
-    // Extract unique names from search result metadata
+    // extract unique names from search result metadata
     const members = new Set();
     const destinations = new Set();
     const sponsors = new Set();
 
     results.forEach(r => {
-        // Use metadata that comes with each search result
+        // use metadata that comes with each search result
         if (r.member_name) members.add(r.member_name);
         
-        // Process destinations from result metadata
+        // process destinations 
         if (r.destinations && Array.isArray(r.destinations)) {
             r.destinations.forEach(d => {
                 if (d.name) destinations.add(d.name);
             });
         }
         
-        // Process sponsors from result metadata
+        // Process sponsors 
         if (r.sponsors && Array.isArray(r.sponsors)) {
             r.sponsors.forEach(s => {
                 if (s.name) sponsors.add(s.name);
@@ -288,6 +278,7 @@ function renderFilterControls(results) {
         }
     });
 
+    // build filter dropdowns with counts and clear button
     const filterHTML = `
         <div id="filter-controls" style="margin-bottom: 1em; margin-top: 1em; display: flex; gap: 1em; flex-wrap: wrap;">
             <div>
@@ -323,16 +314,16 @@ function renderFilterControls(results) {
         </div>
     `;
 
-    // Remove old filters and instructions if they exist
+    // remove old filters and instructions if they exist
     const oldFilters = document.getElementById("filter-controls");
     const oldInstructions = document.getElementById("filter-instructions");
     if (oldFilters) oldFilters.remove();
     if (oldInstructions) oldInstructions.remove();
     
-    // Insert filter controls at the beginning of the results container
+    // insert filter controls at the beginning of the results container
     container.insertAdjacentHTML("afterbegin", filterHTML);
 
-    // Attach event listeners
+    // attach event listeners
     document.getElementById("member-filter").addEventListener("change", function() {
         updateSelectionCount("member-filter", "member-count");
         applyFilters();
@@ -346,7 +337,7 @@ function renderFilterControls(results) {
         applyFilters();
     });
     
-    // Add clear button event listeners
+    // add clear button event listeners
     document.getElementById("clear-members").addEventListener("click", function() {
         clearSelection("member-filter", "member-count");
     });
@@ -357,7 +348,7 @@ function renderFilterControls(results) {
         clearSelection("sponsor-filter", "sponsor-count");
     });
 
-    // Clear all filters button
+    // clear all filters button
     const clearAllBtn = document.getElementById("clear-all-filters");
     if (clearAllBtn) {
         clearAllBtn.addEventListener('click', function() {
@@ -365,21 +356,20 @@ function renderFilterControls(results) {
         });
     }
     
-    // Initialize selection counts
+    // initialize selection counts
     updateSelectionCount("member-filter", "member-count");
     updateSelectionCount("destination-filter", "destination-count");
     updateSelectionCount("sponsor-filter", "sponsor-count");
     
-    // Enable simple click for multiple selection (no Ctrl/Cmd needed)
+    // enable simple click for multiple selection 
     enableSimpleMultiSelect("member-filter", "member-count");
     enableSimpleMultiSelect("destination-filter", "destination-count");
     enableSimpleMultiSelect("sponsor-filter", "sponsor-count");
     
-    // Initialize cascading filters with no selections (show all options)
     updateCascadingFilterDropdowns([], [], []);
 }
 
-// --- Function to update selection count display ---
+// function to update selection count display for given filter so u know how many u have selected
 function updateSelectionCount(selectId, countId) {
     const select = document.getElementById(selectId);
     const countSpan = document.getElementById(countId);
@@ -389,7 +379,7 @@ function updateSelectionCount(selectId, countId) {
     }
 }
 
-// --- Function to clear all selections for a filter ---
+// clear all selections for a filter button
 function clearSelection(selectId, countId) {
     const select = document.getElementById(selectId);
     if (select) {
@@ -400,7 +390,7 @@ function clearSelection(selectId, countId) {
     }
 }
 
-// --- Clear all three filters at once ---
+// Clear all filters at once 
 function clearAllFilters() {
     const memberSelect = document.getElementById("member-filter");
     const destSelect = document.getElementById("destination-filter");
@@ -410,16 +400,16 @@ function clearAllFilters() {
     if (destSelect) Array.from(destSelect.options).forEach(o => o.selected = false);
     if (sponsorSelect) Array.from(sponsorSelect.options).forEach(o => o.selected = false);
 
-    // Update counts in the UI
+    // update counts 
     updateSelectionCount("member-filter", "member-count");
     updateSelectionCount("destination-filter", "destination-count");
     updateSelectionCount("sponsor-filter", "sponsor-count");
 
-    // Reapply filters once (will update cascading dropdowns and table)
+    // reapply filters once (will update dropdowns and table)
     applyFilters();
 }
 
-// --- Enable simple click for multiple selection (no Ctrl/Cmd needed) ---
+// enable simple click for multiple selection 
 function enableSimpleMultiSelect(selectId, countId) {
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -440,33 +430,20 @@ function enableSimpleMultiSelect(selectId, countId) {
         e.stopPropagation();
         const option = e.target;
         if (option.tagName === 'OPTION') {
-            // Store the current scroll position
+            // store current scroll position
             const currentScrollTop = select.scrollTop;
             scrollPositions[selectId] = currentScrollTop;
-            // Toggle behavior. For destination-filter we enforce single-selection
-            // but allow clicking the selected option again to deselect (no selection).
+            // Toggle the clicked option (multi-select for all filters)
             const wasSelected = option.selected;
-            if (selectId === 'destination-filter') {
-                if (wasSelected) {
-                    // Was selected -> clicking again clears all
-                    Array.from(select.options).forEach(o => o.selected = false);
-                } else {
-                    // Was not selected -> make it the only selected option
-                    Array.from(select.options).forEach(o => o.selected = false);
-                    option.selected = true;
-                }
-            } else {
-                // Multi-selects: toggle the clicked option
-                option.selected = !wasSelected;
-            }
+            option.selected = !wasSelected;
             
-            // Immediately restore scroll position before any DOM updates
+            // restore scroll position before DOM updates
             select.scrollTop = currentScrollTop;
             
             updateSelectionCount(selectId, countId);
             applyFilters();
             
-            // Ensure scroll position is maintained after all operations
+            // ensure scroll position is maintained after all operations, so you dont lose your place in a long list
             setTimeout(() => {
                 select.scrollTop = currentScrollTop;
                 scrollPositions[selectId] = currentScrollTop;
@@ -474,27 +451,27 @@ function enableSimpleMultiSelect(selectId, countId) {
         }
     });
     
-    // Prevent all default behaviors that might cause scrolling
+    // prevent default behaviors that might cause scrolling
     select.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
     });
     
     select.addEventListener('focus', function(e) {
-        // Restore scroll position when select gets focus
+        // restore scroll position when select gets focus
         if (scrollPositions[selectId] !== undefined) {
             select.scrollTop = scrollPositions[selectId];
         }
     });
 }
 
-// --- Apply dropdown filters dynamically ---
+// apply dropdown filters dynamically 
 function applyFilters() {
     const memberSelect = document.getElementById("member-filter");
     const destSelect = document.getElementById("destination-filter");
     const sponsorSelect = document.getElementById("sponsor-filter");
 
-    // Get selected values as arrays
+    // get selected values as arrays
     const selectedMembers = Array.from(memberSelect.selectedOptions).map(option => option.value);
     const selectedDestinations = Array.from(destSelect.selectedOptions).map(option => option.value);
     const selectedSponsors = Array.from(sponsorSelect.selectedOptions).map(option => option.value);
@@ -502,7 +479,7 @@ function applyFilters() {
     const filtered = lastResults.filter(r => {
         // Use metadata from search result
         
-        // Member matching - OR logic within selected members
+        // Member matching - OR logic within the selected members
         const memberMatch = selectedMembers.length === 0 || 
             selectedMembers.some(memberVal => r.member_name === memberVal);
         
@@ -531,66 +508,8 @@ function applyFilters() {
     // Update filter dropdowns to show only relevant options based on current selections
     updateCascadingFilterDropdowns(selectedMembers, selectedDestinations, selectedSponsors);
     
-    // Render the filtered table, preserving the most recent parsed query so
-    // quoted-phrase highlighting remains consistent after filtering.
+    // render filtered table, preserving the most recent parsed query 
     renderTable(filtered, null, lastParsedQuery);
-}
-
-// --- Update filter dropdown options based on current results ---
-function updateFilterDropdowns(results) {
-    const memberSelect = document.getElementById("member-filter");
-    const destSelect = document.getElementById("destination-filter");
-    const sponsorSelect = document.getElementById("sponsor-filter");
-    
-    if (!memberSelect || !destSelect || !sponsorSelect) return;
-
-    // Store current selections (multiple values)
-    const currentMembers = Array.from(memberSelect.selectedOptions).map(option => option.value);
-    const currentDests = Array.from(destSelect.selectedOptions).map(option => option.value);
-    const currentSponsors = Array.from(sponsorSelect.selectedOptions).map(option => option.value);
-
-    // Extract unique names from filtered results using metadata
-    const members = new Set();
-    const destinations = new Set();
-    const sponsors = new Set();
-
-    results.forEach(r => {
-        if (r.member_name) members.add(r.member_name);
-        
-        // Process destinations from result metadata
-        if (r.destinations && Array.isArray(r.destinations)) {
-            r.destinations.forEach(d => {
-                if (d.name) destinations.add(d.name);
-            });
-        }
-        
-        // Process sponsors from result metadata
-        if (r.sponsors && Array.isArray(r.sponsors)) {
-            r.sponsors.forEach(s => {
-                if (s.name) sponsors.add(s.name);
-            });
-        }
-    });
-
-    // Update member dropdown
-    memberSelect.innerHTML = [...members].sort().map(m => 
-        `<option value="${m}" ${currentMembers.includes(m) ? 'selected' : ''}>${m}</option>`
-    ).join("");
-
-    // Update destination dropdown
-    destSelect.innerHTML = [...destinations].sort().map(d => 
-        `<option value="${d}" ${currentDests.includes(d) ? 'selected' : ''}>${d}</option>`
-    ).join("");
-
-    // Update sponsor dropdown
-    sponsorSelect.innerHTML = [...sponsors].sort().map(s => 
-        `<option value="${s}" ${currentSponsors.includes(s) ? 'selected' : ''}>${s}</option>`
-    ).join("");
-    
-    // Update selection counts after refreshing options
-    updateSelectionCount("member-filter", "member-count");
-    updateSelectionCount("destination-filter", "destination-count");
-    updateSelectionCount("sponsor-filter", "sponsor-count");
 }
 
 // --- Update cascading filter dropdown options based on current selections ---
@@ -618,8 +537,8 @@ function updateCascadingFilterDropdowns(selectedMembers, selectedDestinations, s
 
         const memberMatch = selectedMembers.length === 0 || selectedMembers.includes(memberName);
 
-        // Destination match: require that a trip includes ALL selected destinations
-        const destMatch = selectedDestinations.length === 0 || selectedDestinations.every(destVal =>
+        // Destination match: OR logic within selected destinations
+        const destMatch = selectedDestinations.length === 0 || selectedDestinations.some(destVal =>
             destinations.some(d => d.name === destVal || d.name.includes(destVal) || destVal.includes(d.name))
         );
 
@@ -686,16 +605,11 @@ function updateCascadingFilterDropdowns(selectedMembers, selectedDestinations, s
     updateSelectionCount("sponsor-filter", "sponsor-count");
 }
 
-// --- Display results table ---
-function displayResults(results) {
-    renderTable(results, null, lastParsedQuery);
-}
-
-// --- Render just the table (without filter controls) ---
+//  Render just the table (without filter controls)
 function renderTable(results, searchStartTime = null, parsedQuery = null) {
     const container = document.getElementById('results');
     
-    // Find existing table container or create one
+    // find existing table container or create one
     let tableContainer = document.getElementById('table-container');
     if (!tableContainer) {
         tableContainer = document.createElement('div');
@@ -704,7 +618,6 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
     }
 
     const originalQuery = document.getElementById('document-search-input').value.trim();
-    const query = originalQuery.toLowerCase();
     const highlightTerms = getHighlightTerms(parsedQuery);
     const phraseTerms = (parsedQuery?.must || []).filter(t => t.indexOf(' ') >= 0);
 
@@ -726,11 +639,11 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
                     const docId = r.doc_id || "N/A";
                     const score = r.score?.toFixed(2) ?? "N/A";
 
-                    // Highlight snippet: prefer exact quoted phrases (must), then words
+                    // highlight snippet: prefer exact quoted phrases, then words
                     const lowerDoc = docText.toLowerCase();
                     let snippet = "";
 
-                    // 1) Try phrase terms first (exact substring match)
+                    // Try phrase terms first 
                     let foundPhrase = null;
                     for (const phrase of phraseTerms) {
                         const idx = lowerDoc.indexOf(phrase.toLowerCase());
@@ -746,7 +659,7 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
                         const re = new RegExp(`(${escapedPhrase})`, "gi");
                         snippet = snippetRaw.replace(re, '<mark>$1</mark>');
                     } else {
-                        // 2) Fall back to highlighting individual terms (from parsedQuery if present), otherwise original query words
+                        // Fall back to highlighting individual terms (from parsedQuery if present), otherwise original query words
                         const queryWords = (highlightTerms && highlightTerms.length > 0) ? highlightTerms : originalQuery.split(/\s+/).filter(w => w.length > 2);
                         let bestMatch = { index: -1, word: "" };
 
@@ -773,13 +686,13 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
                         }
                     }
 
-                    // Get metadata from search result
+                    // get metadata from search result
                     const memberId = r.member_id || "";
                     const memberName = r.member_name || "N/A";
                     const destinations = r.destinations || [];
                     let sponsors = r.sponsors || [];
 
-                    // Deduplicate sponsors
+                    // deduplicate sponsors
                     if (sponsors.length > 1) {
                         const seen = new Set();
                         sponsors = sponsors.filter(s => {
@@ -830,7 +743,7 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
     }
 
     const dataTableInitStart = performance.now();
-    const dataTable = $('#results-table').DataTable({
+    $('#results-table').DataTable({
         pageLength: 10,
         order: [], // No initial sorting
         ordering: false, // Disable all sorting capabilities
@@ -852,7 +765,6 @@ function renderTable(results, searchStartTime = null, parsedQuery = null) {
             
             // Hide loading indicator when DataTable is fully loaded
             hideLoadingIndicator();
-            // Alternative: use hideLoadingBar() if you're using the progress bar style
         },
         drawCallback: function() {
             // Also hide loading indicator on subsequent draws (e.g., filtering, pagination)

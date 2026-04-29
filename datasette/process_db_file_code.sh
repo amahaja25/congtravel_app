@@ -18,6 +18,7 @@ else
     sqlite3 "$DB_FILE" ""
 fi
 
+# process the CSV files and insert into the database as their own tables
 sqlite-utils insert "$DB_FILE" house_trips datasette/raw_data/csv/house_current.csv --csv
 sqlite-utils transform "$DB_FILE" house_trips --pk doc_id
 sqlite-utils schema "$DB_FILE" house_trips
@@ -36,9 +37,9 @@ sqlite-utils schema "$DB_FILE" destinations
 sqlite-utils extract "$DB_FILE" trip_sponsors sponsor --table sponsors
 sqlite-utils schema "$DB_FILE" sponsors
 
-sqlite-utils insert "$DB_FILE" senate_trips datasette/raw_data/csv/clean_propub_senate_current.csv --csv
-sqlite-utils transform "$DB_FILE" senate_trips --pk file_name
-sqlite-utils schema "$DB_FILE" senate_trips
+# sqlite-utils insert "$DB_FILE" senate_trips datasette/raw_data/csv/clean_propub_senate_current.csv --csv
+# sqlite-utils transform "$DB_FILE" senate_trips --pk file_name
+# sqlite-utils schema "$DB_FILE" senate_trips
 
 sqlite-utils insert "$DB_FILE" mecea_trips datasette/raw_data/csv/mecea_trips.csv --csv
 sqlite-utils schema "$DB_FILE" mecea_trips
@@ -48,7 +49,7 @@ sqlite-utils index-foreign-keys "$DB_FILE"
 ###
 # Create a member table
 ###
-# Issue: by using select distinct, we end up with multiple instances of the same member_id having different values in the other column, because of name difference, district differences, tate differnces
+# Issue: by using select distinct, we end up with multiple instances of the same member_id having different values in the other column, because of name difference, district differences, state differnces
 # Instead we group by member id, which will give the first? value of the other columns. But we need test who is being dropped
 sqlite-utils create-table "$DB_FILE" member member_name text member_id text state text party text district text
 sqlite-utils query "$DB_FILE" "INSERT INTO member (member_name, member_id, state, party, district) SELECT member_name, member_id, state, party, district FROM house_trips GROUP BY member_id"
@@ -62,17 +63,15 @@ sqlite-utils query "$DB_FILE" "
 sqlite-utils transform "$DB_FILE" member --pk member_id
 
 ###
-# Need to create a Senate member table
+# Need to create a Senate member table eventually
 ###
 
-
-###
-# Create the text.json tables
-###
 
 # sqlite-utils insert "$DB_FILE" senate_text datasette/raw_data/text_json/senate_text.json
 # sqlite-utils schema "$DB_FILE" senate_text
 
+
+# Create the text.json tables using the full text 
 python3 -c "
 import json, sys
 d = json.load(open('datasette/raw_data/text_json/house_text.json'))
@@ -81,19 +80,17 @@ print(json.dumps([dict(zip(cols, row)) for row in d['rows']]))
 " | sqlite-utils insert "$DB_FILE" house_text -
 sqlite-utils schema "$DB_FILE" house_text
 
+# old logic 
 # sqlite-utils insert "$DB_FILE" legistorm_text datasette/raw_data/text_json/legistorm_text.json
 # sqlite-utils schema "$DB_FILE" legistorm_text
-
-
 #sqlite-utils enable-fts "$DB_FILE" house_text text
 #sqlite-utils enable-fts "$DB_FILE" senate_text text
 #sqlite-utils enable-fts "$DB_FILE" legistorm_text text
 # sqlite-utils add-foreign-key "$DB_FILE" house_text doc_id house_trips doc_id
 # sqlite-utils add-foreign-key "$DB_FILE" senate_text file_name senate_trips file_name
 
-###
-# Create the House Trip page
-###
+
+# Create the House Trip page -- individual trip details
 
 sqlite-utils create-table "$DB_FILE" house_trip_page doc_id text cleaned_filer_names text member_name text member_id text party text state text destinations text sponsors text departure_date text return_date text trip_length integer document_link text
 sqlite-utils query "$DB_FILE" "
@@ -135,9 +132,8 @@ LEFT JOIN dedup_sponsors ds ON ht.doc_id = ds.doc_id
 "
 
 
-###
-# Traveler page
-### 
+
+# Traveler page 
 sqlite-utils create-table "$DB_FILE" traveler_info cleaned_filer_names text member_name text member_id text total_trips integer 
 sqlite-utils query "$DB_FILE" "
 INSERT INTO traveler_info (cleaned_filer_names, member_name, member_id, total_trips)
@@ -151,7 +147,7 @@ JOIN member m ON ht.member_id = m.member_id
 GROUP BY ht.cleaned_filer_names, m.member_id
 "  
 
-
+# all the traveler's trips based on traveler name -- will be used to populate table 
 sqlite-utils create-table "$DB_FILE" all_traveler_trips cleaned_filer_names text member_name text member_id text party text state text doc_id text destination text sponsor text departure_date text return_date text trip_length integer sponsors_id text destination_id text 
 sqlite-utils query "$DB_FILE" "
 INSERT INTO all_traveler_trips (cleaned_filer_names, member_name, member_id, party, state, doc_id, destination, sponsor, departure_date, return_date, trip_length, sponsors_id, destination_id)
@@ -195,9 +191,9 @@ JOIN sponsor_agg sa ON ht.doc_id = sa.doc_id
 JOIN destination_agg da ON ht.doc_id = da.doc_id
 GROUP BY ht.cleaned_filer_names, ht.doc_id, m.member_id;
 "
-###
-# Sponsor top destinations and members + trips per year 
-###
+
+# Sponsor top destinations and members + trips per year for the bullet points
+
 
 sqlite-utils create-table "$DB_FILE" sponsor_top_destinations sponsor_id text sponsor text top_destinations text top_members text trips_per_year text total_trips integer unique_offices integer
 
@@ -324,14 +320,7 @@ LEFT JOIN trips_per_year ty ON td.sponsor_id = ty.sponsor_id
 LEFT JOIN total_trips tt ON td.sponsor_id = tt.sponsor_id
 LEFT JOIN unique_offices uo ON td.sponsor_id = uo.sponsor_id;"
 
-
-
-
-
-
-
-###
-# All sponsor trips
+# All sponsor trips 
 sqlite-utils create-table "$DB_FILE" sponsor_trips sponsor text doc_id text member_name text member_id text departure_date text return_date text trip_length integer destination text cleaned_filer_names text party text state text sponsors_id text
 
 sqlite-utils query "$DB_FILE" "
@@ -378,13 +367,8 @@ GROUP BY ht.doc_id, s.id
 "
 
 
-###
 
-###
 # Destination top sponsors and members + trips per year
-###
-
-
 sqlite-utils create-table "$DB_FILE" destination_top_sponsors destination_id text destination text top_sponsors text top_members text trips_per_year text total_trips integer average_trip_length text unique_offices text
 
 sqlite-utils query "$DB_FILE" "
@@ -543,9 +527,8 @@ LEFT JOIN unique_offices uo ON ts.destination_id = uo.destination_id
 GROUP BY ts.destination_id, ts.destination;
 "
 
-###
+
 # destination trips
-###
 
 sqlite-utils create-table "$DB_FILE" destination_trips destination text doc_id text member_name text member_id text departure_date text return_date text trip_length integer sponsor text cleaned_filer_names text party text state text destinations_id text
 
@@ -594,12 +577,7 @@ GROUP BY ht.doc_id, d.id
 
 
 
-
-
-###
-# home page
-###
-
+# home page! includes a column for trips per year for the charts.js graphics
 sqlite-utils create-table "$DB_FILE" home_table top_sponsors text top_members text top_destinations text dest_trips_per_year text sponsor_trips_per_year text total_trips text first_year integer
 
 sqlite-utils query "$DB_FILE" "
@@ -714,10 +692,8 @@ SELECT
 FROM top_sponsors ts, top_members tm, top_destinations td, dest_trips_per_year dtt, sponsor_trips_per_year stt, total_trips tt, first_year fy;
 "
 
-###
-# Member page
-###
 
+# Member page
 sqlite-utils create-table "$DB_FILE" member_top_sponsors_destinations member_id text member_name text top_sponsors text top_destinations text trips_per_year text total_trips text state text district text
 sqlite-utils query "$DB_FILE" "
 INSERT INTO member_top_sponsors_destinations (member_id, member_name, top_sponsors, top_destinations, trips_per_year, total_trips, state, district)
@@ -838,9 +814,8 @@ JOIN member m ON m.member_id = ts.member_id;
 "
 
 
-###
+
 # All member trips
-###
 sqlite-utils create-table "$DB_FILE" member_trips member_id text member_name text departure_date text return_date text trip_length integer doc_id text destination text sponsor text cleaned_filer_names text sponsors_id text destination_id text
 sqlite-utils query "$DB_FILE" "
 INSERT INTO member_trips (
@@ -885,9 +860,8 @@ JOIN sponsor_agg sa ON ht.doc_id = sa.doc_id
 JOIN destination_agg da ON ht.doc_id = da.doc_id;
 "
 
-###
-# Search table
-###
+
+# Search data -- every single sponsor, destination and member with their id and category
 sqlite-utils create-table "$DB_FILE" search_data \
     id text \
     name text \
@@ -903,10 +877,8 @@ SELECT member_id, member_name, 'member' FROM member
 "
 
   
-
-###
 # drop unnecessary tables
-###
+
 
 sqlite-utils drop-table "$DB_FILE" senate_trips
 sqlite-utils drop-table "$DB_FILE" mecea_trips
@@ -914,8 +886,6 @@ sqlite-utils drop-table "$DB_FILE" trip_destinations
 sqlite-utils drop-table "$DB_FILE" trip_sponsors
 sqlite-utils drop-table "$DB_FILE" house_trips
 
-###
 # Publish dataset
-###
 
 # datasette "$DB_FILE" --cors

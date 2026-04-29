@@ -82,11 +82,11 @@ processed_documents = []
 for i, doc in enumerate(documents):
     try:
         if isinstance(doc, dict):
-            # Dictionary format - look for text field
+            # dictionary format - look for text field
             text_content = doc.get("text", "") or doc.get("doc", "") or str(doc)
             doc_id = doc.get("doc_id", f"doc_{i}")
         elif isinstance(doc, list):
-            # List format - based on debug output: [rowid, doc_id, text_content]
+            # list format - [rowid, doc_id, text_content]
             if len(doc) >= 3:
                 doc_id = doc[1]  # Second element is doc_id
                 text_content = doc[2]  # Third element is text content
@@ -97,7 +97,7 @@ for i, doc in enumerate(documents):
                 doc_id = f"doc_{i}"
                 text_content = str(doc[0]) if len(doc) > 0 else ""
         else:
-            # String or other format
+            # string or other format
             text_content = str(doc)
             doc_id = f"doc_{i}"
         
@@ -109,7 +109,7 @@ for i, doc in enumerate(documents):
         continue
 
 print(f"Successfully processed {len(tokenized_documents)} documents")
-documents = processed_documents  # Use the processed documents for the final pickle
+documents = processed_documents  # use the processed documents for the final pickle
 
 # check if we have valid tokenized documents
 if not tokenized_documents:

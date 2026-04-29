@@ -7,7 +7,6 @@ import re
 import requests
 import json # for parsing json from datasette endpoints, parsing nested json in colums
 from flask import Flask, render_template, request, jsonify # for flask app
-from pandas import * # 
 import sys 
 from urllib.parse import urljoin # to append endpoint paths
 from num2words import num2words # formatting numbers to words for display
@@ -43,9 +42,6 @@ def pull_json(path):
 
     return {"rows": all_rows}
 
-
-# URL base path
-#URL_BASE_PATH = '/interactives/fall-2024/congressional_travel_explorer'
 
 # Define URL_BASE_PATH dynamically based on the command-line argument
 if len(sys.argv) > 1 and sys.argv[1] == 'freeze':
@@ -320,9 +316,6 @@ def sponsor(sponsors_id):
 ###############################
 # Individual destination page #
 ###############################
-
-# URL pattern
-#destinations_id = 99
 
 @app.route('/destination/<destinations_id>.html')
 # Function to ingest data for trip page
@@ -633,7 +626,7 @@ def filer_in_office(member_id, filer_name):
 @app.route('/')
 def index_page():
     try:
-        # we created a specific table in datasette that has all the info we want to show on homepage
+        # created a specific table in datasette that has all the info we want to show on homepage
         home_info = pull_json("/congtravel_master/home_table.json")
         print(f"Full JSON response: {home_info}", flush=True)
 
@@ -667,6 +660,7 @@ def index_page():
 
     
 
+### basic pages without dynamic info ###
 @app.route('/about.html')
 def about_page():
     return render_template('about.html')
@@ -680,18 +674,19 @@ def sponsor_page():
 @app.route('/all-destinations.html')
 def destination_page():
     destinations = pull_json("congtravel_master/destinations.json")
-    print(f"Sponsor JSON: {destinations}", flush=True)
+    print(f"Destination JSON: {destinations}", flush=True)
     rows = destinations.get("rows", [])
-    print(f"Parsed sponsor rows: {rows}", flush=True)
+    print(f"Parsed destination rows: {rows}", flush=True)
 
     
     return render_template('all-destinations.html', destination_results=rows)
-    
+
 @app.route('/all-members.html')
 def member_page():
     members = pull_json("congtravel_master/member.json")
     rows = members.get("rows", [])
     return render_template('all-members.html', member_results=rows)
 
+# run the app
 if __name__ == '__main__':
     app.run(debug=True)

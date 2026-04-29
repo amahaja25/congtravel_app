@@ -4,36 +4,37 @@ import numpy as np
 import requests
 import re
 import json
+import os
 
+# embed query using average of the word vectors from the model's word vectors
 def embed_query(query, model):
-    # Try deterministic embedding by averaging available word vectors from the model's wv.
-    # This avoids non-determinism from Doc2Vec.infer_vector in some gensim versions.
+    # average available word vectors from the model's wv.
     tokens = simple_preprocess(query)
     vecs = []
     try:
         for t in tokens:
             if t in model.wv:
+                # for each token, if it is in the model's vocab, get its vector and add to list
                 vecs.append(model.wv[t])
     except Exception:
-        # model may not have .wv or access fails; fall back to infer_vector
+        
         vecs = []
 
+    # if there are vectors, then average them to get avg vector for query
     if vecs:
         arr = np.array(vecs)
         avg = np.mean(arr, axis=0)
         return avg
-    # fallback: use infer_vector (may be non-deterministic in some gensim versions)
+    # use infer_vector as fallback
     return model.infer_vector(tokens)
 
 def get_valid_doc_ids():
-    """Get doc_ids and metadata for all trips. Returns dict with 'doc_ids' set and 'metadata' dict.
-    Uses cached pickle file if available to speed up startup."""
     
+    # filepath for valid document ids
     cache_file = "static/valid_doc_ids_cache.pkl"
     
-    # Try to load from cache first
+    # load from cache first
     try:
-        import os
         if os.path.exists(cache_file):
             print(f"Loading cached doc_ids from {cache_file}")
             import pickle
@@ -44,23 +45,24 @@ def get_valid_doc_ids():
     except Exception as e:
         print(f"Could not load cache: {e}")
     
-    # If cache doesn't exist, fetch from API
-    print("Fetching doc_ids from API (this may take a minute on first run)...")
+    # if cache doesn't exist, fetch from API
+    print("Fetching doc_ids from API ...")
     try:
-        # Get all doc_ids and metadata from the member_trips API with pagination
+        # get all doc_ids and metadata — destination, sponsor, office — from the member_trips API with pagination
         url = "https://congtrav-05-14-2025-648704443537.us-east1.run.app/congtravel_master/member_trips.json"
         valid_doc_ids = set()
         metadata = {}
         
-        # Start with the first page
+        # start with the first page
         current_url = f"{url}?_size=1000"
         
+    
         while current_url:
             print(f"Fetching: {current_url}")
             response = requests.get(current_url, timeout=30)
             data = response.json()
             
-            # Extract doc_ids and metadata from this page
+            # extract doc_ids and metadata from this page
             for row in data.get("rows", []):
                 doc_id = row[6]
                 valid_doc_ids.add(doc_id)
@@ -68,7 +70,7 @@ def get_valid_doc_ids():
                 member_name = row[2]
                 member_id = row[1]
                 
-                # Parse destinations with IDs
+                # parse destinations with IDs
                 destinations = []
                 try:
                     dest_data = json.loads(row[7])
@@ -80,7 +82,7 @@ def get_valid_doc_ids():
                 except:
                     pass
                 
-                # Parse sponsors with IDs
+                # parse sponsors with IDs
                 sponsors = []
                 try:
                     sponsor_data = json.loads(row[8])
@@ -92,6 +94,7 @@ def get_valid_doc_ids():
                 except:
                     pass
                 
+                # save metadata for each doc_id
                 metadata[doc_id] = {
                     'member_name': member_name,
                     'member_id': member_id,
@@ -99,7 +102,7 @@ def get_valid_doc_ids():
                     'sponsors': sponsors
                 }
             
-            # Get next page URL
+            # get next page URL
             next_url = data.get("next_url")
             if next_url:
                 current_url = next_url
@@ -123,24 +126,29 @@ def get_valid_doc_ids():
         print(f"Error loading valid doc_ids: {e}")
         return {'doc_ids': set(), 'metadata': {}}
 
+
+
+
+#### This is the actual search function that we use for each document search query ####
 def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
-    # Build deterministic query vector
+    
+    # embed the query using the same method as document embeddings 
     query_vec = embed_query(query, model).reshape(1, -1)
+    # calculate cosine similarity between query and all of the document embeddings that we have saved earlier in the cache
     similarities = cosine_similarity(query_vec, embeddings)[0]
     
-    # Optimization: Get top candidates by similarity first to reduce processing
-    # Use argpartition for O(n) instead of O(n log n) sort
+    # Get top candidates by similarity first to reduce processing
     if len(similarities) > top_k * 3:
-        # Get top 3x candidates (we'll filter more later)
+        # Get top candidates 
         top_candidate_indices = np.argpartition(similarities, -top_k * 3)[-top_k * 3:]
         # Sort just these top candidates
         top_candidate_indices = top_candidate_indices[np.argsort(similarities[top_candidate_indices])[::-1]]
     else:
-        # If we have fewer documents, just sort all
+        # If fewer documents, just sort all
         top_candidate_indices = np.argsort(similarities)[::-1]
     
     # Prepare query for matching
-    # Strip surrounding quotes for exact-phrase checks and normalize whitespace
+    # Strip surrounding quotes for exact-phrase checks, normalize whitespace
     query_stripped = query.strip()
     if (query_stripped.startswith('"') and query_stripped.endswith('"')) or (query_stripped.startswith("'") and query_stripped.endswith("'")):
         query_stripped = query_stripped[1:-1]
@@ -148,16 +156,16 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
     query_terms = [term.lower().strip() for term in re.split(r"\s+", query_stripped) if len(term) > 2]
     
     # Use pre-cached metadata from valid_doc_ids_cache
-    # Extract the doc_ids set and metadata dict
+    # extract the doc_ids set and metadata dict so we can link to the correct pages in search results
     if isinstance(valid_doc_ids_cache, dict):
         valid_doc_ids = valid_doc_ids_cache.get('doc_ids', set())
         metadata_cache = valid_doc_ids_cache.get('metadata', {})
     else:
-        # Fallback for old format (just a set)
+        # fallback 
         valid_doc_ids = valid_doc_ids_cache
         metadata_cache = {}
     
-    # Server-side advanced query parsing (quoted phrases treated as MUST, support +/-, AND/OR/NOT)
+    # Advanced boolean query parsing (quoted phrases treated as MUST, support +/-, AND/OR/NOT)
     def parse_advanced_query(raw_query):
         must = []
         should = []
@@ -208,20 +216,20 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
     parsed = parse_advanced_query(query)
     
     results = []
-    # Process only top candidates instead of all documents
+    # process only top candidates instead of all documents
     for i in top_candidate_indices:
-        doc_entry = documents[i]  # a dict with 'doc_id' and 'doc' fields
+        doc_entry = documents[i]  # dict with 'doc_id' and 'doc' fields
         doc_id = doc_entry.get("doc_id", f"doc_{i}")
         
-        # Only include documents that have complete trip metadata
+        # only include documents that have complete trip metadata -- a sponsor, destination and member
         if doc_id in valid_doc_ids:
-            # Normalize document text: strip simple HTML, collapse whitespace, lowercase
+            # normalize document text: strip simple HTML, collapse whitespace, make all lowercase
             raw_text = doc_entry.get("text", "") or doc_entry.get("doc", "") or ''
             doc_text = re.sub(r'<[^>]+>', ' ', raw_text)
             doc_text = re.sub(r'\s+', ' ', doc_text).lower().strip()
             base_score = float(similarities[i])
 
-            # helper to check presence of term or phrase in normalized doc_text
+            # presence of term or phrase in normalized doc_text
             def doc_contains(term):
                 if not term:
                     return False
@@ -233,7 +241,7 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
                 except Exception:
                     return term_norm in doc_text
 
-            # Apply boolean filters: MUST, MUST_NOT, SHOULD
+            # apply boolean filters: MUST, MUST_NOT, SHOULD
             must_terms = parsed.get('must', [])
             must_not_terms = parsed.get('must_not', [])
             should_terms = parsed.get('should', [])
@@ -252,17 +260,17 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
             if violated:
                 continue
 
-            # If there are SHOULD terms but no MUST terms, require at least one SHOULD
+            # if there are SHOULD terms but no MUST terms, require at least one SHOULD
             if should_terms and not must_terms:
                 if not any(doc_contains(t) for t in should_terms):
                     continue
 
-            # Calculate match type and boost
+            # calculate match type and boost
             exact_phrase_match = False
             if query_lower:
                 exact_phrase_match = query_lower in doc_text
             else:
-                # If no global query, treat any MUST phrase as exact phrase for scoring
+                # if no global query, treat any MUST phrase as exact phrase for scoring
                 if any(' ' in t for t in must_terms):
                     exact_phrase_match = any(doc_contains(t) for t in must_terms if ' ' in t)
 
@@ -302,16 +310,16 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
                 "sponsors": doc_metadata.get('sponsors', [])
             })
     
-    # Sort by final score (descending), then by match type priority
+    # sort descending by final score, then by match type priority
     def sort_key(x):
-        # Primary sort: final score (higher is better)
+        # primary sort: final score 
         # Secondary sort: match type priority (exact phrase > all words > partial words > semantic only)
         match_priority = {
             "exact_phrase": 4,
             "all_words": 3,
             "semantic_only": 0
         }
-        # Handle partial word matches
+        # partial word matches
         if x["match_type"].startswith("partial_words"):
             match_priority[x["match_type"]] = 2
         
@@ -320,18 +328,6 @@ def search(query, model, embeddings, documents, valid_doc_ids_cache, top_k=500):
     
     results.sort(key=sort_key, reverse=True)
     
-    # Take top results
+    # top results
     results = results[:top_k]
-    
-    # Log some stats
-    exact_matches = sum(1 for r in results if r["match_type"] == "exact_phrase")
-    all_word_matches = sum(1 for r in results if r["match_type"] == "all_words")
-    partial_matches = sum(1 for r in results if r["match_type"].startswith("partial_words"))
-    
-    print(f"Search results: {len(results)} total")
-    print(f"  - Exact phrase matches: {exact_matches}")
-    print(f"  - All words matches: {all_word_matches}")
-    print(f"  - Partial word matches: {partial_matches}")
-    print(f"  - Semantic only: {len(results) - exact_matches - all_word_matches - partial_matches}")
-    
     return results
